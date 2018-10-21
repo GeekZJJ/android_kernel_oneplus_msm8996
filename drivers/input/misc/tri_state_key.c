@@ -26,13 +26,15 @@
 
 #include <linux/timer.h>
 
+#include <linux/miscdevice.h>
+
 #define DRV_NAME	"tri-state-key"
 
 /*
 	        KEY1(GPIO1)	KEY2(GPIO92)
-1½ÅºÍ4½ÅÁ¬½Ó	0	            1         | MUTE
-2½ÅºÍ5½ÅÁ¬½Ó	1	            1         | Do Not Disturb
-4½ÅºÍ3½ÅÁ¬½Ó	1	            0         | Normal
+1è„šå’Œ4è„šè¿žæŽ¥	0	            1         | MUTE
+2è„šå’Œ5è„šè¿žæŽ¥	1	            1         | Do Not Disturb
+4è„šå’Œ3è„šè¿žæŽ¥	1	            0         | Normal
 
 */
 typedef enum {
@@ -77,6 +79,72 @@ static int set_gpio_by_pinctrl(void)
     return pinctrl_select_state(switch_data->key_pinctrl, switch_data->set_state);
 }
 #endif
+
+//////////////////////////////////////////////////////////////////////////////////
+static int triKey_release(struct inode *inode, struct file *filp)
+{
+	return 0;
+}
+
+static int triKey_open(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static ssize_t triKey_write(struct file *filp, const char __user *buf, size_t size, loff_t *ppos)
+{
+	char writeBuffer[2]={0};
+    
+	mutex_lock(&sem);
+
+	/*ä»Žç”¨æˆ·ç©ºé—´å†™å…¥æ•°æ®*/
+	if (copy_from_user(writeBuffer, buf, 1)==0)
+	{
+		switch(writeBuffer[0])
+		{
+			case MODE_DO_NOT_DISTURB:
+				switch_set_state(&switch_data->sdev, MODE_DO_NOT_DISTURB);
+				printk(KERN_INFO "Change triKey state:MODE_DO_NOT_DISTURB.\n");
+				break;
+			case MODE_NORMAL:
+				switch_set_state(&switch_data->sdev, MODE_NORMAL);
+				printk(KERN_INFO "Change triKey state:MODE_NORMAL.\n");
+				break;
+			case MODE_MUTE:
+				switch_set_state(&switch_data->sdev, MODE_MUTE);
+				printk(KERN_INFO "Change triKey state:MODE_MUTE.\n");
+				break;
+			default:
+				printk(KERN_INFO "Change triKey state error:Unknown state.\n");
+				break;
+		}
+		printk(KERN_INFO "Change triKey state using write function.\n");
+	}
+	else
+	{
+		printk(KERN_INFO "Fail to change triKey state using write function.\n");
+	}
+
+	mutex_unlock(&sem);
+
+  return size;
+}
+
+static const struct file_operations triKey_fops = {
+	.owner = THIS_MODULE,
+	.open = triKey_open,
+	.release = triKey_release,
+	.write = triKey_write,
+};
+
+static struct miscdevice triKey_misc = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "triKey",
+	.fops = &triKey_fops,
+	.mode = S_IRUGO | S_IWUGO,
+};
+//////////////////////////////////////////////////////////////////////////////////
+
 static void switch_dev_work(struct work_struct *work)
 {
 
@@ -458,6 +526,12 @@ static int tristate_dev_probe(struct platform_device *pdev)
 		 //set_gpio_by_pinctrl();
         //report the first switch
         //switch_dev_work(&switch_data->work);
+		
+		printk(KERN_INFO "Initing triKey.Creating device!\n");
+		if (unlikely(misc_register(&triKey_misc))) {
+			pr_err("Failed to register misc device:triKey!\n");
+		}
+
         return 0;
 
 
@@ -477,13 +551,16 @@ err_switch_dev_register:
 
 static int tristate_dev_remove(struct platform_device *pdev)
 {
-printk("%s\n",__func__);
+    printk("%s\n",__func__);
 	cancel_work_sync(&switch_data->work);
 	gpio_free(switch_data->key1_gpio);
 	gpio_free(switch_data->key2_gpio);
 	gpio_free(switch_data->key3_gpio);
 	switch_dev_unregister(&switch_data->sdev);
 	kfree(switch_data);
+
+	misc_deregister(&triKey_misc);
+	printk(KERN_INFO "Deiniting triKey.Deleting device!\n");
 
 	return 0;
 }
