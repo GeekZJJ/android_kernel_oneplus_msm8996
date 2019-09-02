@@ -12,6 +12,9 @@ export SUBARCH=arm64
 
 mkdir -p out && make clean O=out && make mrproper O=out && make msm-perf_defconfig O=out && time make -j5 O=out
 mkdir -p release/
-rm release/*
+rm release/*.ko release/Image.gz-dtb release/geekzjj-oos-pie.zip
 find -name "*.ko" | xargs -i cp {} release/
 cp out/arch/arm64/boot/Image.gz-dtb release/
+cp out/arch/arm64/boot/Image.gz-dtb release/zip/kernel/
+cd release/zip
+zip -r ../geekzjj-oos-pie.zip *
