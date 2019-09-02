@@ -1,0 +1,14 @@
+ui_print("### GeekZJJ unified kernel for OP3/3T ###");
+ui_print(" ");
+ui_print(" ");
+ui_print("Extracting binaries");
+package_extract_dir("kernel", "/tmp");
+set_perm(0, 0, 0777, "/tmp/install_kernel.sh");
+set_perm(0, 0, 0777, "/tmp/mkbootimg");
+set_perm(0, 0, 0777, "/tmp/unpackbootimg");
+set_progress(0.6);
+ui_print("Building and flashing boot.img");
+run_program("/tmp/install_kernel.sh");
+ui_print("Done!");
+set_progress(1.0);
+
