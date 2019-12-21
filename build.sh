@@ -10,10 +10,13 @@ export ARCH=arm64
 export SRCARCH=arm64
 export SUBARCH=arm64
 
-mkdir -p out && make clean O=out && make mrproper O=out && make msm-perf_defconfig O=out && time make -j5 O=out
+#make -j1 V=1 O=out
+#exit
+mkdir -p out && make clean O=out && make mrproper O=out && make msm-perf_defconfig O=out && time make -j5 O=out INSTALL_MOD_STRIP=1
+make O=out/ INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=release/ modules_install
 mkdir -p release/
 rm release/*.ko release/Image.gz-dtb release/geekzjj-oos-pie.zip
-find -name "*.ko" | xargs -i cp {} release/
+find out/release/lib -name "*.ko" | xargs -i cp {} release/
 cp out/arch/arm64/boot/Image.gz-dtb release/
 cp out/arch/arm64/boot/Image.gz-dtb release/zip/kernel/
 cd release/zip
