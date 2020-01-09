@@ -24,29 +24,6 @@
 
 #include "opp.h"
 
-static ssize_t opp_table_show(struct device *dev, struct device_attribute *attr,
-			      char *buf)
-{
-	struct dev_pm_opp *opp;
-	ssize_t count = 0;
-	unsigned long freq = 0;
-
-	rcu_read_lock();
-	while ((opp = dev_pm_opp_find_freq_ceil(dev, &freq))) {
-		if (IS_ERR(opp))
-			break;
-		count += scnprintf(&buf[count], PAGE_SIZE - count, "%lu %lu\n",
-				freq, opp->u_volt);
-		if (count <= 0)
-			break;
-		freq++;
-	}
-	rcu_read_unlock();
-
-	return count;
-}
-static DEVICE_ATTR_RO(opp_table);
-
 /*
  * The root of the list of all devices. All device_opp structures branch off
  * from here, with each device_opp containing the list of opp it supports in
@@ -1089,11 +1066,6 @@ static int _opp_add_v1(struct device *dev, unsigned long freq, long u_volt,
 	 * frequency/voltage list.
 	 */
 	srcu_notifier_call_chain(&dev_opp->srcu_head, OPP_EVENT_ADD, new_opp);
-
-	/*  attribute here */
-	WARN(device_create_file(dev, &dev_attr_opp_table),
-	     "Unable to add opp_table device attribute.\n");
-
 	return 0;
 
 free_opp:
